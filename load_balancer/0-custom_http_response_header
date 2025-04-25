@@ -1,11 +1,45 @@
 #!/usr/bin/env bash
-# returns a custom header on request
+# Simple script to configure Nginx with custom HTTP header X-Served-By
 
-apt-get -y update
-apt-get -y install nginx
+# Update and install Nginx
+sudo apt-get update
+sudo apt-get -y install nginx
 
-sudo sed -i "47i\\\tadd_header X-Served-By $HOSTNAME;" /etc/nginx/sites-available/default
-echo "Holberton School" |sudo tee /var/www/html/index.html
-echo "Ceci n'est pas une page" | sudo tee /usr/share/nginx/html/404.html
+# Create the default page
+#echo "Holberton School" | sudo tee /var/www/html/index.html > /dev/null
 
-sudo service nginx start
+# Create custom 404 page
+echo "Ceci n'est pas une page" | sudo tee /var/www/html/404.html > /dev/null
+
+# Create a new Nginx configuration file with the custom header
+sudo bash -c 'cat > /etc/nginx/conf.d/custom_header.conf << EOF
+# Custom header configuration
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    
+    root /var/www/html;
+    index index.html index.htm;
+    
+    # Custom HTTP header
+    add_header X-Served-By $HOSTNAME;
+    
+    # Custom 404 page
+    error_page 404 /404.html;
+    
+    # Redirect configuration
+    location /redirect_me {
+        return 301 https://www.youtube.com/watch?v=QH2-TGUlwu4;
+    }
+    
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+}
+EOF'
+
+# Remove the default site to avoid conflicts
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# Start Nginx service
+sudo service nginx restart
